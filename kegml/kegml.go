@@ -23,6 +23,11 @@ const (
 
 func ScanTitle(s pegn.Scanner, buf *[]rune) bool {
 	m := s.Mark()
+	if ScanYAMLFrontMatter(s, nil) { // Use nil to discard front-matter
+		// After YAML, continue scanning for the title
+		m = s.Mark() // Reset mark after YAML section
+	}
+
 	if !s.Scan() || s.Rune() != '#' {
 		return s.Revert(m, Title)
 	}

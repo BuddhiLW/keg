@@ -43,14 +43,38 @@ var LatestDexEntryExp = regexp.MustCompile(
 
 // ParseDex parses any input valid for to.String into a Dex pointer.
 // FIXME: replace regular expression with pegn.Scanner instead
+//
+//	func ParseDex(in any) (*Dex, error) {
+//		dex := Dex{}
+//		s := bufio.NewScanner(strings.NewReader(to.String(in)))
+//		for line := 1; s.Scan(); line++ {
+//			f := LatestDexEntryExp.FindStringSubmatch(s.Text())
+//			if len(f) != 4 {
+//				return nil, fmt.Errorf(_BadChangesLine, line)
+//			}
+//			if t, err := time.Parse(IsoDateFmt, string(f[1])); err != nil {
+//				return nil, err
+//			} else {
+//				if i, err := strconv.Atoi(f[3]); err != nil {
+//					return nil, err
+//				} else {
+//					dex = append(dex, &DexEntry{U: t, T: f[2], N: i})
+//				}
+//			}
+//		}
+//		return &dex, nil
+//	}
 func ParseDex(in any) (*Dex, error) {
 	dex := Dex{}
 	s := bufio.NewScanner(strings.NewReader(to.String(in)))
 	for line := 1; s.Scan(); line++ {
 		f := LatestDexEntryExp.FindStringSubmatch(s.Text())
+
+		// Skip lines that don't match instead of returning an error
 		if len(f) != 4 {
-			return nil, fmt.Errorf(_BadChangesLine, line)
+			continue // or log a warning if needed
 		}
+
 		if t, err := time.Parse(IsoDateFmt, string(f[1])); err != nil {
 			return nil, err
 		} else {
@@ -60,6 +84,9 @@ func ParseDex(in any) (*Dex, error) {
 				dex = append(dex, &DexEntry{U: t, T: f[2], N: i})
 			}
 		}
+	}
+	if len(dex) == 0 {
+		return nil, fmt.Errorf("no valid entries found in changes.md")
 	}
 	return &dex, nil
 }
