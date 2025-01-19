@@ -141,7 +141,15 @@ jobs:
           artifacts: dist/*
 ```
 
-### Using `good`
+To make a new release, simply create a new tag (e.g.):
+
+``` sh
+git tag v0.9.7
+git push origin v0.9.7
+```
+
+### Using `good` (rwxrob's way)
+
 Building workflow uses the [`good`](https://github.com/rwxrob/good) Go helper tool (often composited into bonzai personal command trees (`z go`):
 
 ```
