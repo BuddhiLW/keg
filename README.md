@@ -36,8 +36,8 @@ Composed
 package z
 
 import (
-	Z "github.com/BuddhiLW/bonzai/z"
-	"github.com/BuddhiLW/keg"
+	Z "github.com/rwxrob/bonzai/z"
+	"github.com/rwxrob/keg"
 )
 
 var Cmd = &Z.Cmd{
