@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/rwxrob/keg"
+	"github.com/BuddhiLW/keg"
 )
 
 func ExampleNodePaths() {

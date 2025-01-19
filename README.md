@@ -37,7 +37,7 @@ package z
 
 import (
 	Z "github.com/rwxrob/bonzai/z"
-	"github.com/rwxrob/keg"
+	"github.com/BuddhiLW/keg"
 )
 
 var Cmd = &Z.Cmd{

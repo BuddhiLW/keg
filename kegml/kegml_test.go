@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/rwxrob/keg/kegml"
+	"github.com/BuddhiLW/keg/kegml"
 	"github.com/rwxrob/pegn/scanner"
 )
 

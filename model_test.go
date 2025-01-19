@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/rwxrob/keg"
+	"github.com/BuddhiLW//keg"
 )
 
 func ExampleDex_json() {
