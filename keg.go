@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/BuddhiLW/kegml"
+	"github.com/BuddhiLW/keg/kegml"
 	Z "github.com/rwxrob/bonzai/z"
 	"github.com/rwxrob/fs"
 	_fs "github.com/rwxrob/fs"
