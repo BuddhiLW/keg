@@ -12,11 +12,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/BuddhiLW/keg/pkg/kegml"
 	"github.com/rwxrob/choose"
 	"github.com/rwxrob/fs"
 	"github.com/rwxrob/fs/file"
 	"github.com/rwxrob/json"
-	"github.com/rwxrob/keg/kegml"
 	"github.com/rwxrob/term"
 )
 
@@ -48,7 +48,13 @@ func (e *DexEntry) Update(kegpath string) error {
 	if i != nil {
 		e.U = i.ModTime()
 	}
+	// fmt.Println("filepath.Join(dir, `README.md`): ", filepath.Join(dir, `README.md`))
+
 	e.T, err = kegml.ReadTitle(filepath.Join(dir, `README.md`))
+	// fmt.Println("[Updating dex] e.T", e.T)
+	if err != nil {
+		fmt.Println("err.Error():", err.Error())
+	}
 	return err
 }
 
@@ -77,9 +83,9 @@ func (e *DexEntry) ID() string { return strconv.Itoa(e.N) }
 // MD returns the entry as a single Markdown list item for inclusion in
 // the dex/nodex.md file:
 //
-//     1. Second last changed in UTC in ISO8601 (RFC3339)
-//     2. Current title (always first line of README.md)
-//     2. Unique node integer identifier
+//  1. Second last changed in UTC in ISO8601 (RFC3339)
+//  2. Current title (always first line of README.md)
+//  2. Unique node integer identifier
 //
 // Note that the second of last change is based on *any* file within the
 // node directory changing, not just the README.md or meta files.
@@ -408,7 +414,7 @@ func (tl TagsMap) MarshalText() ([]byte, error) {
 	return []byte(str), nil
 }
 
-//Write writes the marshaled text of a TagsMap to the file at path.
+// Write writes the marshaled text of a TagsMap to the file at path.
 func (tl TagsMap) Write(path string) error {
 	return file.Overwrite(path, tl.String())
 }

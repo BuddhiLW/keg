@@ -479,6 +479,7 @@ var changesCmd = &Z.Cmd{
 		}
 
 		dex, err := ParseDex(strings.Join(lines, "\n"))
+		fmt.Println("error parsing:", err.Error())
 		if err != nil {
 			return nil
 		}
@@ -559,8 +560,10 @@ var editCmd = &Z.Cmd{
 		}
 
 		btime := fs.ModTime(path)
+		// fmt.Println("already got the title")
 
 		if err := file.Edit(path); err != nil {
+			fmt.Println("error editing")
 			return err
 		}
 
@@ -571,15 +574,21 @@ var editCmd = &Z.Cmd{
 			if err := DexRemove(keg.Path, entry); err != nil {
 				return err
 			}
+			// fmt.Println("publishing")
 			return Publish(keg.Path)
 		} else {
+			// fmt.Println("Dex updating")
+			// fmt.Println("keg.Path", keg.Path)
+			// fmt.Println("entry", entry)
 			if err := DexUpdate(keg.Path, entry); err != nil {
+				fmt.Println("Dex error updating")
 				return err
 			}
 		}
 
 		atime := fs.ModTime(path)
 		if atime.After(btime) {
+			// fmt.Println("publishing 2")
 			return Publish(keg.Path)
 		}
 		return nil

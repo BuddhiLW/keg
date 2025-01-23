@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/BuddhiLW/keg/kegml"
+	"github.com/BuddhiLW/keg/pkg/kegml"
 	Z "github.com/rwxrob/bonzai/z"
 	"github.com/rwxrob/fs"
 	_fs "github.com/rwxrob/fs"
@@ -65,20 +65,27 @@ var LatestDexEntryExp = regexp.MustCompile(
 //		return &dex, nil
 //	}
 func ParseDex(in any) (*Dex, error) {
+	// fmt.Println("ParseDex!")
 	dex := Dex{}
 	s := bufio.NewScanner(strings.NewReader(to.String(in)))
+	// fmt.Println(to.String(in))
 	for line := 1; s.Scan(); line++ {
+		// fmt.Println(s.Text())
+		// fmt.Println(LatestDexEntryExp)
 		f := LatestDexEntryExp.FindStringSubmatch(s.Text())
 
 		// Skip lines that don't match instead of returning an error
 		if len(f) != 4 {
-			continue // or log a warning if needed
+			return nil, fmt.Errorf(_BadChangesLine, line)
+			// continue // or log a warning if needed
 		}
 
 		if t, err := time.Parse(IsoDateFmt, string(f[1])); err != nil {
+			fmt.Println("Error parsing isodate!")
 			return nil, err
 		} else {
 			if i, err := strconv.Atoi(f[3]); err != nil {
+				fmt.Println("Error parsing f[3]!", f[3])
 				return nil, err
 			} else {
 				dex = append(dex, &DexEntry{U: t, T: f[2], N: i})
@@ -96,6 +103,7 @@ func ReadDex(kegdir string) (*Dex, error) {
 	f := filepath.Join(kegdir, `dex`, `changes.md`)
 	buf, err := os.ReadFile(f)
 	if err != nil {
+		fmt.Println("error reading dex")
 		return nil, err
 	}
 	return ParseDex(buf)
@@ -114,6 +122,7 @@ func ScanDex(kegdir string) (*Dex, error) {
 	for _, d := range dirs {
 		_, i := _fs.LatestChange(d.Path)
 		title, _ := kegml.ReadTitle(d.Path)
+		fmt.Println("[ScanDex]: title", title)
 		id, err := strconv.Atoi(d.Info.Name())
 		if err != nil {
 			continue
@@ -204,6 +213,7 @@ func LastChanged(kegpath string) *DexEntry {
 	if err != nil {
 		return nil
 	}
+	fmt.Println("(*dex)[0]", (*dex)[0])
 	return (*dex)[0]
 }
 
@@ -319,19 +329,23 @@ func DexUpdate(kegpath string, entry *DexEntry) error {
 
 	if !HaveDex(kegpath) {
 		if err := MakeDex(kegpath); err != nil {
+			fmt.Println("error making dex")
 			return err
 		}
 	}
 
 	if err := entry.Update(kegpath); err != nil {
+		fmt.Println("error updating dex")
 		return err
 	}
 
 	dex, err := ReadDex(kegpath)
 	if err != nil {
+		fmt.Println("error reading dex")
 		return err
 	}
 
+	// fmt.Println("Dex lookup...")
 	found := dex.Lookup(entry.N)
 	if found == nil {
 		dex.Add(entry)
@@ -340,6 +354,7 @@ func DexUpdate(kegpath string, entry *DexEntry) error {
 		found.T = entry.T
 	}
 
+	// fmt.Println("trying to WriteDex:")
 	return WriteDex(kegpath, dex)
 }
 
@@ -354,11 +369,15 @@ func WriteDex(kegpath string, dex *Dex) error {
 	changes := filepath.Join(kegpath, `dex`, `changes.md`)
 	nodes := filepath.Join(kegpath, `dex`, `nodes.tsv`)
 	if err := file.Overwrite(changes, dex.ByChanges().MD()); err != nil {
+		// fmt.Println("error writing dex 1")
 		return err
 	}
 	if err := file.Overwrite(nodes, dex.ByID().TSV()); err != nil {
+		// fmt.Println("error writing dex 2")
 		return err
 	}
+
+	// fmt.Println("trying to UpdateUpdated:")
 	return UpdateUpdated(kegpath)
 }
 

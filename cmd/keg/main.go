@@ -4,7 +4,7 @@
 
 package main
 
-import "github.com/BuddhiLW/keg"
+import "github.com/BuddhiLW/keg/pkg/keg"
 
 // tree grown from branch
 func main() { keg.Cmd.Run() }
