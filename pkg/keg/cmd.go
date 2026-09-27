@@ -14,6 +14,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/BuddhiLW/keg/pkg/seal"
 	"github.com/charmbracelet/glamour"
 	Z "github.com/rwxrob/bonzai/z"
 	"github.com/rwxrob/choose"
@@ -214,6 +215,7 @@ var Cmd = &Z.Cmd{
 		indexCmd, createCmd, currentCmd, directoryCmd, deleteCmd,
 		lastCmd, changesCmd, titlesCmd, initCmd, randomCmd,
 		importCmd, grepCmd, viewCmd, columnsCmd, linkCmd, tagCmd,
+		sealCmd, unsealCmd,
 	},
 
 	Shortcuts: Z.ArgMap{
@@ -559,6 +561,10 @@ var editCmd = &Z.Cmd{
 			return fmt.Errorf(_NodeNotFound, id)
 		}
 
+		if IsSealedNode(keg.Path, id) {
+			return editSealed(keg, id, entry)
+		}
+
 		btime := fs.ModTime(path)
 		// fmt.Println("already got the title")
 
@@ -599,8 +605,8 @@ var editCmd = &Z.Cmd{
 var createCmd = &Z.Cmd{
 	Name:        `create`,
 	Aliases:     []string{`c`},
-	Params:      []string{`sample`},
-	MaxArgs:     1,
+	Params:      []string{`sample`, `sealed`},
+	Usage:       `[help|sample|sealed [HINT...]]`,
 	Summary:     help.S(_create),
 	Description: help.D(_create),
 	Commands:    []*Z.Cmd{help.Cmd},
@@ -615,6 +621,10 @@ var createCmd = &Z.Cmd{
 		entry, err := MakeNode(keg.Path)
 		if err != nil {
 			return err
+		}
+
+		if len(args) > 0 && args[0] == `sealed` {
+			return createSealed(keg, entry, strings.Join(args[1:], ` `))
 		}
 
 		if len(args) > 0 && args[0] == `sample` {
@@ -921,6 +931,12 @@ var viewCmd = &Z.Cmd{
 		buf, err := os.ReadFile(path)
 		if err != nil {
 			return err
+		}
+
+		if seal.IsSealed(buf) {
+			if buf, err = openSealed(keg.Path, buf); err != nil {
+				return err
+			}
 		}
 
 		var r *glamour.TermRenderer

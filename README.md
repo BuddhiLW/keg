@@ -158,3 +158,18 @@ good build
 gh release create
 gh release upload TAGVER build/*
 ```
+
+## Sealed (encrypted) nodes
+
+Private notes can live in the same git history as public ones. `keg seal ID [HINT]` encrypts a node's `README.md` in place with OpenPGP, to one or more recipients, and only the hint (or `🔒 sealed`) shows up in the index. `keg create sealed [HINT]` writes a node sealed from the start; `keg edit` and `keg view` decrypt through a private temporary copy outside the keg (or in memory) and never write plaintext into it.
+
+```yaml
+# in the keg file
+seal:
+  recipients: [0123...ABCD, 4567...EF01]   # multi-key: every listed key can read
+  topic-recipients:
+    diary: [0123...ABCD]                   # a tag is its own compartment
+  topics: [private]                        # never published in the clear
+```
+
+`keg seal check` (also run before every publish) refuses plaintext nodes that carry a sealed tag; `keg seal rekey (ID|all)` re-encrypts after a key is added or removed; `keg seal who [ID]` shows who can read what; `keg unseal ID` stores a node in the clear again. The on-disk envelope (`#hive/sealed 1`) is the same one hive memory uses, so sealed nodes can be ingested without being opened. Requires `gpg`.

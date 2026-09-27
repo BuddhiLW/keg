@@ -16,6 +16,7 @@ require (
 	github.com/rwxrob/term v0.2.9
 	github.com/rwxrob/to v0.12.1
 	github.com/rwxrob/vars v0.6.4
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -61,5 +62,4 @@ require (
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	gopkg.in/op/go-logging.v1 v1.0.0-20160211212156-b2cb9fa56473 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

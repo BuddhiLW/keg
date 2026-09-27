@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/BuddhiLW/keg/pkg/kegml"
 	"github.com/rwxrob/choose"
 	"github.com/rwxrob/fs"
 	"github.com/rwxrob/fs/file"
@@ -50,7 +49,7 @@ func (e *DexEntry) Update(kegpath string) error {
 	}
 	// fmt.Println("filepath.Join(dir, `README.md`): ", filepath.Join(dir, `README.md`))
 
-	e.T, err = kegml.ReadTitle(filepath.Join(dir, `README.md`))
+	e.T, err = NodeTitle(filepath.Join(dir, `README.md`))
 	// fmt.Println("[Updating dex] e.T", e.T)
 	if err != nil {
 		fmt.Println("err.Error():", err.Error())

@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/BuddhiLW/keg/pkg/kegml"
 	Z "github.com/rwxrob/bonzai/z"
 	"github.com/rwxrob/fs"
 	_fs "github.com/rwxrob/fs"
@@ -121,7 +120,7 @@ func ScanDex(kegdir string) (*Dex, error) {
 	})
 	for _, d := range dirs {
 		_, i := _fs.LatestChange(d.Path)
-		title, _ := kegml.ReadTitle(d.Path)
+		title, _ := NodeTitle(d.Path)
 		fmt.Println("[ScanDex]: title", title)
 		id, err := strconv.Atoi(d.Info.Name())
 		if err != nil {
@@ -264,6 +263,9 @@ func Publish(kegpath string) error {
 	gitd, err := fs.HereOrAbove(`.git`)
 	if err != nil {
 		return nil
+	}
+	if err := GuardSealed(kegpath); err != nil {
+		return err
 	}
 	origd, err := os.Getwd()
 	if err != nil {
@@ -431,7 +433,7 @@ func ImportNode(kegpath, target string) error {
 		return fmt.Errorf(_CantGetNextNode, target)
 	}
 
-	next.T, err = kegml.ReadTitle(filepath.Join(target, `README.md`))
+	next.T, err = NodeTitle(filepath.Join(target, `README.md`))
 	if err != nil {
 		return err
 	}
