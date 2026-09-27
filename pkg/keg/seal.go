@@ -275,7 +275,7 @@ func EditSealedNode(s seal.Sealer, kegpath, id string, edit Editor) (EditResult,
 	if err != nil {
 		return Unchanged, err
 	}
-	out, err := s.Seal(after, env.Hint, tags)
+	out, err := s.Rewrite(env, after, tags)
 	if err != nil {
 		return Unchanged, err
 	}
@@ -320,7 +320,8 @@ func CheckSealed(kegpath string, p seal.Policy) ([]string, error) {
 }
 
 // GuardSealed fails when publishing would put a must-seal node in git
-// in the clear.
+// in the clear: one carrying a sealed tag, or one whose own front
+// matter asks to be sealed.
 func GuardSealed(kegpath string) error {
 	st, err := SealSettings(kegpath)
 	if err != nil {
@@ -333,7 +334,64 @@ func GuardSealed(kegpath string) error {
 	if len(ids) > 0 {
 		return fmt.Errorf(_MustBeSealed, strings.Join(ids, " "))
 	}
+	pending, err := PendingSeals(kegpath)
+	if err != nil {
+		return err
+	}
+	if len(pending) > 0 {
+		return fmt.Errorf(_PendingSeal, strings.Join(pending, " "))
+	}
 	return nil
+}
+
+const _PendingSeal = "refusing to publish: node(s) %v ask to be sealed in their front matter but are stored in the clear (run `keg seal apply`)"
+
+// PendingSeals returns the ids of plaintext nodes whose front matter
+// carries a seal directive. A directive that cannot be read is an
+// error naming the node.
+func PendingSeals(kegpath string) ([]string, error) {
+	dirs, _, _ := _fs.IntDirs(kegpath)
+	var ids []string
+	for _, d := range dirs {
+		id := d.Info.Name()
+		buf, err := os.ReadFile(readmePath(kegpath, id))
+		if err != nil || seal.IsSealed(buf) {
+			continue
+		}
+		dir, err := seal.ParseDirective(buf)
+		if err != nil {
+			return nil, fmt.Errorf("node %v: %w", id, err)
+		}
+		if dir.Seal {
+			ids = append(ids, id)
+		}
+	}
+	sort.Slice(ids, func(i, j int) bool {
+		a, _ := strconv.Atoi(ids[i])
+		b, _ := strconv.Atoi(ids[j])
+		return a < b
+	})
+	return ids, nil
+}
+
+// AutoSeal seals every node PendingSeals reports and refreshes its
+// index entry, so the plaintext title leaves the dex too. It returns
+// the ids it sealed.
+func AutoSeal(s seal.Sealer, kegpath string) ([]string, error) {
+	ids, err := PendingSeals(kegpath)
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range ids {
+		if err := SealNode(s, kegpath, id, ""); err != nil {
+			return nil, fmt.Errorf("node %v: %w", id, err)
+		}
+		n, _ := strconv.Atoi(id)
+		if err := DexUpdate(kegpath, &DexEntry{N: n}); err != nil {
+			return nil, err
+		}
+	}
+	return ids, nil
 }
 
 const _MustBeSealed = "refusing to publish: node(s) %v carry a sealed tag but are stored in the clear (run `keg seal ID`)"

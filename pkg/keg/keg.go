@@ -264,6 +264,9 @@ func Publish(kegpath string) error {
 	if err != nil {
 		return nil
 	}
+	if err := SealPendingNodes(kegpath); err != nil {
+		return err
+	}
 	if err := GuardSealed(kegpath); err != nil {
 		return err
 	}

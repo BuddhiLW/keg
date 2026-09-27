@@ -173,3 +173,5 @@ seal:
 ```
 
 `keg seal check` (also run before every publish) refuses plaintext nodes that carry a sealed tag; `keg seal rekey (ID|all)` re-encrypts after a key is added or removed; `keg seal who [ID]` shows who can read what; `keg unseal ID` stores a node in the clear again. The on-disk envelope (`#hive/sealed 1`) is the same one hive memory uses, so sealed nodes can be ingested without being opened. Requires `gpg`.
+
+A plain note can opt in later by itself: put `seal: true` (or `seal: [FINGERPRINT, ...]`, plus an optional `seal-hint:`) in its front matter and it is sealed automatically before the next publish (`keg seal apply` does it on demand).

@@ -35,11 +35,11 @@ var _unseal string
 var sealCmd = &Z.Cmd{
 	Name:        `seal`,
 	Aliases:     []string{`lock`},
-	Usage:       `(help|check|rekey|who|ID|last|same|REGEXP) [HINT...]`,
+	Usage:       `(help|apply|check|rekey|who|ID|last|same|REGEXP) [HINT...]`,
 	MinArgs:     1,
 	Summary:     help.S(_seal),
 	Description: help.D(_seal),
-	Commands:    []*Z.Cmd{help.Cmd, sealCheckCmd, sealRekeyCmd, sealWhoCmd},
+	Commands:    []*Z.Cmd{help.Cmd, sealApplyCmd, sealCheckCmd, sealRekeyCmd, sealWhoCmd},
 
 	Call: func(x *Z.Cmd, args ...string) error {
 		keg, id, entry, err := get(x, args[0])

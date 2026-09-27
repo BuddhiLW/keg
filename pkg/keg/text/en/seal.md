@@ -27,3 +27,12 @@ A node can be sealed to several keys at once (multi-key). Recipients come from t
 Environment overrides: `KEG_SEAL_RECIPIENTS` (comma list), `KEG_SEAL_TOPIC_RECIPIENTS` (`tag=FPR,...`), `KEG_SEALED_TOPICS`, `KEG_SEAL_GPG_BIN`, `KEG_SEAL_GPG_HOMEDIR`. With no recipients at all the node is sealed to your own default key.
 
 Once sealed, {{cmd "edit"}} decrypts into a private, short-lived copy outside the keg and seals the result back; {{cmd "view"}} decrypts in memory. Plaintext is never written inside the keg. Publishing refuses to push when a node carrying a tag listed in `topics` or `topic-recipients` is stored in the clear (see {{cmd "check"}}).
+
+A note can also ask to be sealed itself, so a plain note can become secret later. Add a directive to its front matter:
+
+    ---
+    seal: true                # or a list: seal: [0123...ABCD, 4567...EF01]
+    seal-hint: public title   # optional
+    ---
+
+Before anything is published (and on {{cmd "apply"}}), every plaintext node carrying `seal: true` or a fingerprint list is sealed in place and its index title replaced by the hint. `true` follows the keg policy (default recipients or the tag's compartment); a fingerprint list names the only recipients and overrides the policy. The directive travels inside the ciphertext, so later edits keep the same recipients and hint. A directive that cannot be understood (a short key id, an empty list, broken YAML) stops the publish rather than guessing. {{cmd "check"}} also fails while any such note is still in the clear.

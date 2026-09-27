@@ -20,17 +20,28 @@ type Sealer struct {
 	Policy Policy
 }
 
-// Seal encrypts plain for the recipients tags select and returns the
-// stored envelope. The hint is public: it becomes the node's title in
-// the index, so it must not carry the secret.
+// Seal encrypts plain and returns the stored envelope. Recipients are
+// the ones the plaintext's own directive names, else those its tags
+// select. The hint is public: it becomes the node's title in the index,
+// so it must not carry the secret. An empty hint falls back to the
+// directive's.
 func (s Sealer) Seal(plain []byte, hint string, tags []string) (string, error) {
 	if IsSealed(plain) {
 		return "", ErrAlreadySealed
 	}
+	d, err := ParseDirective(plain)
+	if err != nil {
+		return "", err
+	}
+	hint = FirstHint(hint, d.Hint)
 	if !ValidHint(hint) {
 		return "", ErrBadHint
 	}
-	armor, err := s.Cipher.Encrypt(plain, s.Policy.RecipientsFor(tags))
+	to := s.Policy.RecipientsFor(tags)
+	if len(d.To) > 0 {
+		to = d.To
+	}
+	armor, err := s.Cipher.Encrypt(plain, to)
 	if err != nil {
 		return "", err
 	}
@@ -53,12 +64,23 @@ func (s Sealer) Open(content []byte) ([]byte, Envelope, error) {
 	return plain, env, nil
 }
 
-// Reseal re-encrypts sealed content to the recipients tags select now,
-// keeping its hint. It is how a key is added to or removed from a node.
+// Reseal re-encrypts sealed content to the recipients its tags and its
+// own directive select now, keeping its hint. It is how a key is added
+// to or removed from a node.
 func (s Sealer) Reseal(content []byte, tags []string) (string, error) {
 	plain, env, err := s.Open(content)
 	if err != nil {
 		return "", err
 	}
-	return s.Seal(plain, env.Hint, tags)
+	return s.Rewrite(env, plain, tags)
+}
+
+// Rewrite seals new plaintext for a node that was sealed as prev. The
+// hint the plaintext's directive names wins over the one prev carried.
+func (s Sealer) Rewrite(prev Envelope, plain []byte, tags []string) (string, error) {
+	d, err := ParseDirective(plain)
+	if err != nil {
+		return "", err
+	}
+	return s.Seal(plain, FirstHint(d.Hint, prev.Hint), tags)
 }
