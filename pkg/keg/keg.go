@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/BuddhiLW/keg/pkg/okf"
 	Z "github.com/rwxrob/bonzai/z"
 	"github.com/rwxrob/fs"
 	_fs "github.com/rwxrob/fs"
@@ -40,56 +41,29 @@ var LatestDexEntryExp = regexp.MustCompile(
 	`^\* (\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\dZ) \[(.*)\]\(\.\./(\d+)\)$`,
 )
 
-// ParseDex parses any input valid for to.String into a Dex pointer.
-// FIXME: replace regular expression with pegn.Scanner instead
-//
-//	func ParseDex(in any) (*Dex, error) {
-//		dex := Dex{}
-//		s := bufio.NewScanner(strings.NewReader(to.String(in)))
-//		for line := 1; s.Scan(); line++ {
-//			f := LatestDexEntryExp.FindStringSubmatch(s.Text())
-//			if len(f) != 4 {
-//				return nil, fmt.Errorf(_BadChangesLine, line)
-//			}
-//			if t, err := time.Parse(IsoDateFmt, string(f[1])); err != nil {
-//				return nil, err
-//			} else {
-//				if i, err := strconv.Atoi(f[3]); err != nil {
-//					return nil, err
-//				} else {
-//					dex = append(dex, &DexEntry{U: t, T: f[2], N: i})
-//				}
-//			}
-//		}
-//		return &dex, nil
-//	}
+// ParseDex parses any input valid for to.String into a Dex pointer. A
+// leading front matter block, as an OKF keg carries, is skipped.
 func ParseDex(in any) (*Dex, error) {
-	// fmt.Println("ParseDex!")
 	dex := Dex{}
-	s := bufio.NewScanner(strings.NewReader(to.String(in)))
-	// fmt.Println(to.String(in))
+	text := to.String(in)
+	if _, body, ok := okf.Split(text); ok {
+		text = body
+	}
+	s := bufio.NewScanner(strings.NewReader(text))
 	for line := 1; s.Scan(); line++ {
-		// fmt.Println(s.Text())
-		// fmt.Println(LatestDexEntryExp)
 		f := LatestDexEntryExp.FindStringSubmatch(s.Text())
-
-		// Skip lines that don't match instead of returning an error
 		if len(f) != 4 {
 			return nil, fmt.Errorf(_BadChangesLine, line)
-			// continue // or log a warning if needed
 		}
-
-		if t, err := time.Parse(IsoDateFmt, string(f[1])); err != nil {
-			fmt.Println("Error parsing isodate!")
+		t, err := time.Parse(IsoDateFmt, string(f[1]))
+		if err != nil {
 			return nil, err
-		} else {
-			if i, err := strconv.Atoi(f[3]); err != nil {
-				fmt.Println("Error parsing f[3]!", f[3])
-				return nil, err
-			} else {
-				dex = append(dex, &DexEntry{U: t, T: f[2], N: i})
-			}
 		}
+		i, err := strconv.Atoi(f[3])
+		if err != nil {
+			return nil, err
+		}
+		dex = append(dex, &DexEntry{U: t, T: f[2], N: i})
 	}
 	if len(dex) == 0 {
 		return nil, fmt.Errorf("no valid entries found in changes.md")
@@ -162,7 +136,7 @@ func MakeDex(kegdir string) error {
 
 	// markdown is first since reverse chrono of updates is default
 	mdpath := filepath.Join(kegdir, `dex`, `changes.md`)
-	if err := file.Overwrite(mdpath, dex.MD()); err != nil {
+	if err := file.Overwrite(mdpath, frontMatterOf(mdpath)+dex.MD()); err != nil {
 		return err
 	}
 
@@ -171,7 +145,10 @@ func MakeDex(kegdir string) error {
 		return err
 	}
 
-	return UpdateUpdated(kegdir)
+	if err := UpdateUpdated(kegdir); err != nil {
+		return err
+	}
+	return SyncOKF(kegdir)
 }
 
 // UpdateUpdated sets the updated YAML field in the keg info file.
@@ -199,20 +176,13 @@ func Updated(kegpath string) (*time.Time, error) {
 	return &t, nil
 }
 
-// LastChanged parses and returns a DexEntry of the most recently
-// updated node from first line of the dex/changes.md file. If cannot
-// determine returns nil.
+// LastChanged returns the DexEntry of the most recently updated node,
+// the first entry of dex/changes.md. If cannot determine returns nil.
 func LastChanged(kegpath string) *DexEntry {
-	kegfile := filepath.Join(kegpath, `dex`, `changes.md`)
-	lines, err := file.Head(kegfile, 1)
-	if err != nil || len(lines) == 0 {
+	dex, err := ReadDex(kegpath)
+	if err != nil || len(*dex) == 0 {
 		return nil
 	}
-	dex, err := ParseDex(lines[0])
-	if err != nil {
-		return nil
-	}
-	fmt.Println("(*dex)[0]", (*dex)[0])
 	return (*dex)[0]
 }
 
@@ -359,8 +329,10 @@ func DexUpdate(kegpath string, entry *DexEntry) error {
 		found.T = entry.T
 	}
 
-	// fmt.Println("trying to WriteDex:")
-	return WriteDex(kegpath, dex)
+	if err := WriteDex(kegpath, dex); err != nil {
+		return err
+	}
+	return SyncOKF(kegpath, entry.N)
 }
 
 // HaveDex returns true if keg at kegpath has a dex/changes.md file.
@@ -369,11 +341,12 @@ func HaveDex(kegpath string) bool {
 }
 
 // WriteDex writes the dex/changes.md and dex/nodes.tsv files to the keg
-// at kegpath and calls UpdateUpdated to keep keg info file in sync.
+// at kegpath and calls UpdateUpdated to keep keg info file in sync. A
+// front matter block heading dex/changes.md is kept.
 func WriteDex(kegpath string, dex *Dex) error {
 	changes := filepath.Join(kegpath, `dex`, `changes.md`)
 	nodes := filepath.Join(kegpath, `dex`, `nodes.tsv`)
-	if err := file.Overwrite(changes, dex.ByChanges().MD()); err != nil {
+	if err := file.Overwrite(changes, frontMatterOf(changes)+dex.ByChanges().MD()); err != nil {
 		// fmt.Println("error writing dex 1")
 		return err
 	}
@@ -459,7 +432,10 @@ func DexRemove(kegpath string, entry *DexEntry) error {
 
 	dex.Delete(entry)
 
-	return WriteDex(kegpath, dex)
+	if err := WriteDex(kegpath, dex); err != nil {
+		return err
+	}
+	return SyncOKF(kegpath)
 }
 
 // ReadTags reads an existing dex/tags files within the target keg

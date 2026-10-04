@@ -215,7 +215,7 @@ var Cmd = &Z.Cmd{
 		indexCmd, createCmd, currentCmd, directoryCmd, deleteCmd,
 		lastCmd, changesCmd, titlesCmd, initCmd, randomCmd,
 		importCmd, grepCmd, viewCmd, columnsCmd, linkCmd, tagCmd,
-		sealCmd, unsealCmd,
+		sealCmd, unsealCmd, okfCmd,
 	},
 
 	Shortcuts: Z.ArgMap{
@@ -475,15 +475,12 @@ var changesCmd = &Z.Cmd{
 			return fmt.Errorf(_FileNotFound, `dex/changes.md`)
 		}
 
-		lines, err := file.Head(path, n)
+		dex, err := ReadDex(keg.Path)
 		if err != nil {
 			return err
 		}
-
-		dex, err := ParseDex(strings.Join(lines, "\n"))
-		fmt.Println("error parsing:", err.Error())
-		if err != nil {
-			return nil
+		if len(*dex) > n {
+			*dex = (*dex)[:n]
 		}
 
 		if term.IsInteractive() {

@@ -175,3 +175,16 @@ seal:
 `keg seal check` (also run before every publish) refuses plaintext nodes that carry a sealed tag; `keg seal rekey (ID|all)` re-encrypts after a key is added or removed; `keg seal who [ID]` shows who can read what; `keg unseal ID` stores a node in the clear again. The on-disk envelope (`#hive/sealed 1`) is the same one hive memory uses, so sealed nodes can be ingested without being opened. Requires `gpg`.
 
 A plain note can opt in later by itself: put `seal: true` (or `seal: [FINGERPRINT, ...]`, plus an optional `seal-hint:`) in its front matter and it is sealed automatically before the next publish (`keg seal apply` does it on demand).
+
+## Open Knowledge Format (OKF)
+
+A keg can also be read as an [Open Knowledge Format](https://github.com/GoogleCloudPlatform/open-knowledge-format) v0.2 bundle: markdown concepts with YAML front matter carrying a `type`. A keg already is a directory of markdown, so the gap is the front matter.
+
+```sh
+keg okf check        # list the files that do not conform (exits non-zero)
+keg okf fix          # show the OKF keys each file would gain
+keg okf fix write    # add them; existing keys and bodies are never changed
+keg okf index        # write index.md + log.md and opt the keg in
+```
+
+Each `N/README.md` becomes a concept of `type: Note`. The fix adds `title` (from the first heading), `tags` (from `dex/tags`), `generated: {by, at}` (actor `human:LOGIN` or `KEG_OKF_ACTOR`, time from `published` or the dex), and `status: draft` for `draft: true`. The `dex/*.md` files get `type: KEG Index`, and the dex parser skips that front matter. Once `index.md` declares `okf_version`, every create, edit, import or delete keeps the changed node, `index.md` and `log.md` conformant. Sealed nodes are never opened, so they stay the only non-conformant files.
