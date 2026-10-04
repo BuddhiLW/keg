@@ -199,7 +199,7 @@ func current(x *Z.Cmd) (*Local, error) {
 var Cmd = &Z.Cmd{
 	Name:        `keg`,
 	Aliases:     []string{`kn`},
-	Version:     `v0.9.4`,
+	Version:     `v0.10.0`,
 	UseVars:     true,
 	Copyright:   `Copyright 2022 Robert S Muhlestein; 2024 Pedro G Branquinho`,
 	License:     `Apache-2.0`,

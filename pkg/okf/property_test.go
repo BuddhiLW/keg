@@ -99,10 +99,16 @@ func (Defs) Generate(r *rand.Rand, _ int) reflect.Value {
 	return reflect.ValueOf(Defs{d})
 }
 
+// A body that opens with a `---` rule and holds another one is, per
+// OKF, a front matter block; when that block is not YAML, Complete must
+// refuse and leave the content alone rather than guess.
 func TestPropCompletedDocumentsConform(t *testing.T) {
 	prop := func(doc Doc, d Defs) bool {
 		out, _, err := okf.Complete(doc.Content, d.Defaults)
-		return err == nil && okf.CheckConcept(out) == ""
+		if err != nil {
+			return out == doc.Content && okf.CheckConcept(doc.Content) == okf.BadYAML
+		}
+		return okf.CheckConcept(out) == ""
 	}
 	if err := quick.Check(prop, cfg); err != nil {
 		t.Fatal(err)
@@ -113,7 +119,7 @@ func TestPropCompleteIsIdempotent(t *testing.T) {
 	prop := func(doc Doc, d Defs) bool {
 		once, _, err := okf.Complete(doc.Content, d.Defaults)
 		if err != nil {
-			return false
+			return once == doc.Content
 		}
 		twice, added, err := okf.Complete(once, d.Defaults)
 		return err == nil && twice == once && added == nil
@@ -127,20 +133,20 @@ func TestPropCompleteKeepsBodyAndExistingKeys(t *testing.T) {
 	prop := func(doc Doc, d Defs) bool {
 		out, added, err := okf.Complete(doc.Content, d.Defaults)
 		if err != nil {
-			return false
+			return out == doc.Content
 		}
+		// What the input's front matter and body are, as OKF reads them.
+		origBlock, origBody, had := okf.Split(doc.Content)
+		if !had {
+			origBlock, origBody = "", doc.Content
+		}
+		have, _ := okf.Fields(origBlock)
 		block, body, ok := okf.Split(out)
-		if !ok || body != doc.Body {
+		if !ok || body != origBody || !strings.HasPrefix(block, origBlock) {
 			return false
-		}
-		if doc.Front {
-			orig, _, _ := okf.Split(doc.Content)
-			if !strings.HasPrefix(block, orig) {
-				return false
-			}
 		}
 		for _, k := range added {
-			if _, had := doc.Keys[k]; had && doc.Front {
+			if _, was := have[k]; was {
 				return false
 			}
 		}
