@@ -32,7 +32,7 @@ const secret = "# Why I left\n\nThe real reason, which nobody may read.\n"
 
 func clearEnv(t *testing.T) {
 	for _, k := range []string{seal.EnvRecipients, seal.EnvTopicRecipients,
-		seal.EnvTopics, seal.EnvGPGBin, seal.EnvGPGHomedir} {
+		seal.EnvTopics, seal.EnvGPGBin, seal.EnvGPGHomedir, seal.EnvKeyFiles} {
 		t.Setenv(k, "")
 	}
 	t.Setenv("XDG_RUNTIME_DIR", t.TempDir())
@@ -191,7 +191,7 @@ func TestCreateSealedNodeNeverStoresPlaintext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ok, err := keg.CreateSealedNode(s, dir, entry, "", func(p string) error {
+	ok, err := keg.CreateSealedNode(s, dir, entry, "", nil, func(p string) error {
 		if err := os.WriteFile(p, []byte(secret), 0o600); err != nil {
 			return err
 		}
@@ -208,7 +208,7 @@ func TestCreateSealedNodeNeverStoresPlaintext(t *testing.T) {
 	}
 
 	empty, _ := keg.MakeNode(dir)
-	ok, err = keg.CreateSealedNode(s, dir, empty, "", func(string) error { return nil })
+	ok, err = keg.CreateSealedNode(s, dir, empty, "", nil, func(string) error { return nil })
 	if err != nil || ok {
 		t.Fatalf("empty create: %v %v", ok, err)
 	}

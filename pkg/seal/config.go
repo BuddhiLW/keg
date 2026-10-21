@@ -17,12 +17,18 @@ type GPGOptions struct {
 	// ShowRecipients writes recipient key ids into the ciphertext. Off
 	// by default: a public repo then does not reveal who can read a node.
 	ShowRecipients bool
+	// KeyFiles maps a recipient to a public key file gpg encrypts to
+	// without importing it into the keyring.
+	KeyFiles map[Fingerprint]string
 }
 
 // Settings is everything a keg says about sealing.
 type Settings struct {
 	Policy Policy
 	GPG    GPGOptions
+	// KeyFiles are public key files to look recipients up in before the
+	// keyring.
+	KeyFiles []string
 }
 
 // Environment variables that override the keg file.
@@ -32,10 +38,12 @@ const (
 	EnvTopics          = `KEG_SEALED_TOPICS`
 	EnvGPGBin          = `KEG_SEAL_GPG_BIN`
 	EnvGPGHomedir      = `KEG_SEAL_GPG_HOMEDIR`
+	EnvKeyFiles        = `KEG_SEAL_KEY_FILES`
 )
 
 type sealBlock struct {
 	Recipients      []string            `yaml:"recipients"`
+	KeyFiles        []string            `yaml:"key-files"`
 	Topics          []string            `yaml:"topics"`
 	TopicRecipients map[string][]string `yaml:"topic-recipients"`
 	ShowRecipients  bool                `yaml:"show-recipients"`
@@ -80,6 +88,9 @@ func ParseSettings(kegfile string, getenv func(string) string) (Settings, error)
 	if v := getenv(EnvGPGHomedir); v != "" {
 		blk.GPG.Homedir = v
 	}
+	if v := getenv(EnvKeyFiles); v != "" {
+		blk.KeyFiles = SplitCSV(v)
+	}
 
 	return blk.settings()
 }
@@ -114,9 +125,16 @@ func (b sealBlock) settings() (Settings, error) {
 	if bin == "" {
 		bin = "gpg"
 	}
+	var files []string
+	for _, f := range b.KeyFiles {
+		if f = strings.TrimSpace(f); f != "" {
+			files = append(files, f)
+		}
+	}
 	return Settings{
-		Policy: Policy{Default: def, TopicRecipients: topicRs, Topics: topics},
-		GPG:    GPGOptions{Bin: bin, Homedir: b.GPG.Homedir, ShowRecipients: b.ShowRecipients},
+		Policy:   Policy{Default: def, TopicRecipients: topicRs, Topics: topics},
+		GPG:      GPGOptions{Bin: bin, Homedir: b.GPG.Homedir, ShowRecipients: b.ShowRecipients},
+		KeyFiles: files,
 	}, nil
 }
 

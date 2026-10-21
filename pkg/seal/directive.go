@@ -118,6 +118,12 @@ func frontMatter(s string) (string, bool) {
 	return "", false
 }
 
+// RenderDirective returns front matter asking that the note be sealed
+// to to only.
+func RenderDirective(to Recipients) string {
+	return "---\nseal: [" + strings.Join(to.Strings(), ", ") + "]\n---\n\n"
+}
+
 // FirstHint returns the first non-empty hint.
 func FirstHint(hints ...string) string {
 	for _, h := range hints {

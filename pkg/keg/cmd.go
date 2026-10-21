@@ -602,8 +602,8 @@ var editCmd = &Z.Cmd{
 var createCmd = &Z.Cmd{
 	Name:        `create`,
 	Aliases:     []string{`c`},
-	Params:      []string{`sample`, `sealed`},
-	Usage:       `[help|sample|sealed [HINT...]]`,
+	Params:      []string{`sample`, `encrypt`, `sealed`},
+	Usage:       `[help|sample|encrypt [--to FPR|FILE] [--key FILE] [--homedir DIR] [--show-recipients] [HINT...]]`,
 	Summary:     help.S(_create),
 	Description: help.D(_create),
 	Commands:    []*Z.Cmd{help.Cmd},
@@ -615,13 +615,13 @@ var createCmd = &Z.Cmd{
 			return err
 		}
 
+		if len(args) > 0 && (args[0] == `encrypt` || args[0] == `sealed`) {
+			return createEncrypted(keg, args[1:])
+		}
+
 		entry, err := MakeNode(keg.Path)
 		if err != nil {
 			return err
-		}
-
-		if len(args) > 0 && args[0] == `sealed` {
-			return createSealed(keg, entry, strings.Join(args[1:], ` `))
 		}
 
 		if len(args) > 0 && args[0] == `sample` {

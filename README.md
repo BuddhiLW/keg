@@ -161,7 +161,7 @@ gh release upload TAGVER build/*
 
 ## Sealed (encrypted) nodes
 
-Private notes can live in the same git history as public ones. `keg seal ID [HINT]` encrypts a node's `README.md` in place with OpenPGP, to one or more recipients, and only the hint (or `🔒 sealed`) shows up in the index. `keg create sealed [HINT]` writes a node sealed from the start; `keg edit` and `keg view` decrypt through a private temporary copy outside the keg (or in memory) and never write plaintext into it.
+Private notes can live in the same git history as public ones. `keg seal ID [HINT]` encrypts a node's `README.md` in place with OpenPGP, to one or more recipients, and only the hint (or `🔒 sealed`) shows up in the index. `keg create encrypt [HINT]` (alias `sealed`) writes a node sealed from the start; `keg edit` and `keg view` decrypt through a private temporary copy outside the keg (or in memory) and never write plaintext into it.
 
 ```yaml
 # in the keg file
@@ -170,7 +170,20 @@ seal:
   topic-recipients:
     diary: [0123...ABCD]                   # a tag is its own compartment
   topics: [private]                        # never published in the clear
+  key-files: [~/keys/vault.pub.gpg]        # keys gpg reads without importing
+  gpg:
+    homedir: ~/mnt/1/gnupg-vault           # keyring holding the secret key
 ```
+
+Pick the keys for one node on the command line instead of the policy:
+
+```sh
+keg create encrypt --key ~/keys/vault.pub.gpg public hint   # public key file, not imported
+keg create encrypt --to 0123...ABCD --to 4567...EF01         # fingerprints, or files holding one
+keg create encrypt --homedir ~/mnt/1/gnupg-vault             # that keyring's own key
+```
+
+The chosen recipients are written into the note's own `seal:` directive, inside the ciphertext, so later edits keep them. A secret-key file is refused; point `--homedir` at its keyring instead.
 
 `keg seal check` (also run before every publish) refuses plaintext nodes that carry a sealed tag; `keg seal rekey (ID|all)` re-encrypts after a key is added or removed; `keg seal who [ID]` shows who can read what; `keg unseal ID` stores a node in the clear again. The on-disk envelope (`#hive/sealed 1`) is the same one hive memory uses, so sealed nodes can be ingested without being opened. Requires `gpg`.
 

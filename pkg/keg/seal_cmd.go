@@ -205,12 +205,22 @@ func editSealed(keg *Local, id string, entry *DexEntry) error {
 	return commitNode(keg, entry)
 }
 
-func createSealed(keg *Local, entry *DexEntry, hint string) error {
-	s, err := NewSealer(keg.Path)
+// createEncrypted makes a new node sealed from the start, under the
+// options of `keg create encrypt`.
+func createEncrypted(keg *Local, args []string) error {
+	o, err := ParseEncryptArgs(args)
 	if err != nil {
 		return err
 	}
-	created, err := CreateSealedNode(s, keg.Path, entry, hint, file.Edit)
+	s, plan, err := planSealer(keg.Path, o)
+	if err != nil {
+		return err
+	}
+	entry, err := MakeNode(keg.Path)
+	if err != nil {
+		return err
+	}
+	created, err := CreateSealedNode(s, keg.Path, entry, o.Hint, plan.Prefill(), file.Edit)
 	if err != nil || !created {
 		return err
 	}
