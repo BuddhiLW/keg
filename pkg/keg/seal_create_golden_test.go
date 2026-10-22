@@ -36,6 +36,11 @@ func golden(t *testing.T, name, got string) {
 // describePlan renders what `keg create encrypt ARGS` would do, with the
 // home directory spelled ~ so the record is the same on every machine.
 func describePlan(args []string) string {
+	return describePlanWith(nil, args)
+}
+
+// describePlanWith is describePlan for a user who set these keyrings.
+func describePlanWith(keyrings []string, args []string) string {
 	home, _ := os.UserHomeDir()
 	files := map[string]string{"/keys/b.fpr": fpB + "\n"}
 	readFile := func(p string) ([]byte, error) {
@@ -51,7 +56,7 @@ func describePlan(args []string) string {
 		}
 		return "", seal.ErrSecretKeyFile
 	}
-	st := seal.Settings{GPG: seal.GPGOptions{Bin: "gpg"}, KeyFiles: []string{"/keg/d.pub"}}
+	st := seal.Settings{GPG: seal.GPGOptions{Bin: "gpg"}, KeyFiles: []string{"/keg/d.pub"}, Keyrings: keyrings}
 
 	var b strings.Builder
 	fmt.Fprintf(&b, "keg create encrypt %v\n", strings.Join(args, " "))
@@ -69,6 +74,11 @@ func describePlan(args []string) string {
 	fmt.Fprintf(&b, "  to: %v\n", plan.To.Strings())
 	fmt.Fprintf(&b, "  homedir: %q show-recipients: %v\n",
 		strings.Replace(plan.GPG.Homedir, home, "~", 1), plan.GPG.ShowRecipients)
+	var rings []string
+	for _, r := range plan.Keyrings {
+		rings = append(rings, strings.Replace(r, home, "~", 1))
+	}
+	fmt.Fprintf(&b, "  keyrings: %v\n", rings)
 	var located []string
 	for fp, p := range plan.GPG.KeyFiles {
 		located = append(located, string(fp)[:4]+"="+p)
@@ -100,6 +110,24 @@ func TestGoldenCreateEncrypt(t *testing.T) {
 		b.WriteString(describePlan(args))
 	}
 	golden(t, "create_encrypt.golden", b.String())
+}
+
+func TestGoldenCreateEncryptWithKeyrings(t *testing.T) {
+	rings := []string{"~/mnt/1/gnupg-vault", "~/.gnupg"}
+	var b strings.Builder
+	for _, args := range [][]string{nil, {"key", "/keys/c.pub"}, {"homedir", "/once/only", "hint"}} {
+		b.WriteString(describePlanWith(rings, args))
+	}
+	home, _ := os.UserHomeDir()
+	present := func(p string) bool { return p == home+"/.gnupg" }
+	for _, st := range []seal.Settings{
+		{Keyrings: rings},
+		{GPG: seal.GPGOptions{Homedir: "~/mnt/1/gnupg-vault"}},
+		{},
+	} {
+		b.WriteString(strings.ReplaceAll(keg.DescribeKeyrings(st, present), home, "~"))
+	}
+	golden(t, "create_encrypt_keyrings.golden", b.String())
 }
 
 type recordingPrompter struct{ questions []string }

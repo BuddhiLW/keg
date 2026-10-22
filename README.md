@@ -171,8 +171,13 @@ seal:
     diary: [0123...ABCD]                   # a tag is its own compartment
   topics: [private]                        # never published in the clear
   key-files: [~/keys/vault.pub.gpg]        # keys gpg reads without importing
-  gpg:
-    homedir: ~/mnt/1/gnupg-vault           # keyring holding the secret key
+```
+
+Tell keg once which gpg keyrings are yours (a per-user setting, never committed). The first encrypts, each is tried to decrypt, so a key on a removable drive works whenever it is mounted:
+
+```sh
+keg set keyrings ~/mnt/1/gnupg-vault,~/.gnupg
+keg seal who                                              # shows the keyrings in use
 ```
 
 Pick the keys for one node on the command line instead of the policy:
@@ -181,7 +186,7 @@ Pick the keys for one node on the command line instead of the policy:
 keg create encrypt                                        # asks for hint and recipients
 keg create encrypt key ~/keys/vault.pub.gpg public hint   # public key file, not imported
 keg create encrypt to 0123...ABCD to 4567...EF01          # fingerprints, or files holding one
-keg create encrypt homedir ~/mnt/1/gnupg-vault            # that keyring's own key
+keg create encrypt homedir ~/mnt/1/gnupg-vault            # only that keyring, this once
 ```
 
 The chosen recipients are written into the note's own `seal:` directive, inside the ciphertext, so later edits keep them. A secret-key file is refused; point `homedir` at its keyring instead.

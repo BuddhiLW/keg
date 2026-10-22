@@ -32,7 +32,7 @@ const secret = "# Why I left\n\nThe real reason, which nobody may read.\n"
 
 func clearEnv(t *testing.T) {
 	for _, k := range []string{seal.EnvRecipients, seal.EnvTopicRecipients,
-		seal.EnvTopics, seal.EnvGPGBin, seal.EnvGPGHomedir, seal.EnvKeyFiles} {
+		seal.EnvTopics, seal.EnvGPGBin, seal.EnvGPGHomedir, seal.EnvKeyFiles, seal.EnvKeyrings} {
 		t.Setenv(k, "")
 	}
 	t.Setenv("XDG_RUNTIME_DIR", t.TempDir())

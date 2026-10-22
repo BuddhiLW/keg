@@ -4,6 +4,7 @@
 package keg
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -91,20 +92,31 @@ func words(s string) []string {
 // KeyFileReader returns the fingerprint of the public key in a file.
 type KeyFileReader func(o seal.GPGOptions, path string) (seal.Fingerprint, error)
 
-// EncryptPlan is how nodes are sealed: the gpg options, and the
-// recipients a new node's directive names (none means the keg policy).
+// EncryptPlan is how nodes are sealed: the gpg options, the keyrings in
+// the order they are used, and the recipients a new node's directive
+// names (none means the keg policy).
 type EncryptPlan struct {
-	GPG seal.GPGOptions
-	To  seal.Recipients
+	GPG      seal.GPGOptions
+	Keyrings []string
+	To       seal.Recipients
 }
 
 // PlanEncrypt combines the keg settings with the command line options.
-// Every key file, from the keg settings or --key, becomes a place gpg
-// finds that recipient; only --to and --key name recipients.
+// A homedir parameter replaces the keyrings for this command. Every key
+// file, from the keg settings or a key parameter, becomes a place gpg
+// finds that recipient; only to and key name recipients.
 func PlanEncrypt(st seal.Settings, o EncryptOptions, readFile func(string) ([]byte, error), keyFile KeyFileReader) (EncryptPlan, error) {
 	g := st.GPG
+	rings := st.Keyrings
 	if o.Homedir != "" {
-		g.Homedir = o.Homedir
+		rings = []string{o.Homedir}
+	}
+	var keyrings []string
+	for _, r := range rings {
+		keyrings = append(keyrings, expandHome(r))
+	}
+	if len(keyrings) > 0 {
+		g.Homedir = keyrings[0]
 	}
 	g.Homedir = expandHome(g.Homedir)
 	if o.ShowRecipients {
@@ -144,10 +156,10 @@ func PlanEncrypt(st seal.Settings, o EncryptOptions, readFile func(string) ([]by
 		to = append(to, fp)
 	}
 	g.KeyFiles = files
-	return EncryptPlan{GPG: g, To: to.Normal()}, nil
+	return EncryptPlan{GPG: g, Keyrings: keyrings, To: to.Normal()}, nil
 }
 
-// recipientArg reads a --to value: a fingerprint, or a file holding one.
+// recipientArg reads a `to` value: a fingerprint, or a file holding one.
 func recipientArg(s string, readFile func(string) ([]byte, error)) (seal.Fingerprint, error) {
 	fp, err := seal.ParseFingerprint(s)
 	if err == nil {
@@ -182,6 +194,55 @@ func gpgKeyFile(o seal.GPGOptions, path string) (seal.Fingerprint, error) {
 	return seal.NewGPG(o).KeyFile(path)
 }
 
+// userVar reads a `keg set` value; init binds it to the keg command.
+var userVar = func(string) string { return "" }
+
+func init() {
+	userVar = func(key string) string {
+		v, err := Cmd.Get(key)
+		if err != nil || v == `null` {
+			return ""
+		}
+		return v
+	}
+}
+
+// sealEnv reads a KEG_SEAL_* variable. KEG_SEAL_KEYRINGS, when not set
+// at all, falls back to the user's `keg set keyrings` value.
+func sealEnv(key string) string {
+	if v, ok := os.LookupEnv(key); ok {
+		return v
+	}
+	if key == seal.EnvKeyrings {
+		return userVar(`keyrings`)
+	}
+	return ""
+}
+
+// DescribeKeyrings renders the keyrings in the order they are used,
+// marking those exists reports absent.
+func DescribeKeyrings(st seal.Settings, exists func(string) bool) string {
+	rings := st.Keyrings
+	if len(rings) == 0 {
+		rings = []string{st.GPG.Homedir}
+	}
+	var b strings.Builder
+	b.WriteString("keyrings (the first encrypts, each is tried to decrypt):\n")
+	for _, r := range rings {
+		name := expandHome(r)
+		switch {
+		case name == "":
+			name = "gpg default keyring"
+		case !exists(name):
+			name += " (not found)"
+		}
+		b.WriteString("  " + name + "\n")
+	}
+	return b.String()
+}
+
+const _KeyringsHint = "list the keyring that holds the key with: keg set keyrings DIR[,DIR...]"
+
 // planSealer returns the gpg-backed Sealer for the keg under o, and the
 // plan it was built from.
 func planSealer(kegpath string, o EncryptOptions) (seal.Sealer, EncryptPlan, error) {
@@ -193,5 +254,23 @@ func planSealer(kegpath string, o EncryptOptions) (seal.Sealer, EncryptPlan, err
 	if err != nil {
 		return seal.Sealer{}, EncryptPlan{}, err
 	}
-	return seal.Sealer{Cipher: seal.NewGPG(plan.GPG), Policy: st.Policy}, plan, nil
+	rings := seal.GPGKeyrings(plan.GPG, plan.Keyrings, isDir)
+	return seal.Sealer{Cipher: hinted{rings}, Policy: st.Policy}, plan, nil
+}
+
+// hinted adds the keg command that fixes a keyring failure.
+type hinted struct{ seal.Keyrings }
+
+func (h hinted) Decrypt(armor string) ([]byte, error) {
+	plain, err := h.Keyrings.Decrypt(armor)
+	var none *seal.NoKeyringOpened
+	if errors.As(err, &none) {
+		return nil, fmt.Errorf("%w; %v", err, _KeyringsHint)
+	}
+	return plain, err
+}
+
+func isDir(path string) bool {
+	fi, err := os.Stat(path)
+	return err == nil && fi.IsDir()
 }

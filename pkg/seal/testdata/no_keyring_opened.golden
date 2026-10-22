@@ -1,0 +1,1 @@
+seal: no keyring opened this node (tried /mnt/1/gnupg-vault: keyring not found (not mounted?); gpg default keyring: sealtest: no secret key)

@@ -143,6 +143,17 @@ func TestCreateEncryptedNodeKeepsItsRecipients(t *testing.T) {
 		t.Fatal("node directory left behind by a failed edit")
 	}
 
+	unsealable, _ := keg.MakeNode(dir)
+	gone := seal.Sealer{Cipher: seal.GPGKeyrings(seal.GPGOptions{}, []string{"/mnt/vault"}, func(string) bool { return false })}
+	if _, err := keg.CreateSealedNode(gone, dir, unsealable, "", nil, func(p string) error {
+		return os.WriteFile(p, []byte(secret), 0o600)
+	}); !errors.Is(err, seal.ErrKeyringMissing) {
+		t.Fatalf("seal failure: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, unsealable.ID())); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("node directory left behind by a failed seal")
+	}
+
 	entry, _ := keg.MakeNode(dir)
 	ok, err = keg.CreateSealedNode(s, dir, entry, "for b", prefill, func(p string) error {
 		b, _ := os.ReadFile(p)

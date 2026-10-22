@@ -42,13 +42,13 @@ func readmePath(kegpath, id string) string {
 }
 
 // SealSettings reads the seal section of the keg info file, then the
-// KEG_SEAL_* environment.
+// KEG_SEAL_* environment (see sealEnv).
 func SealSettings(kegpath string) (seal.Settings, error) {
 	buf, err := os.ReadFile(filepath.Join(kegpath, `keg`))
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return seal.Settings{}, err
 	}
-	return seal.ParseSettings(string(buf), os.Getenv)
+	return seal.ParseSettings(string(buf), sealEnv)
 }
 
 // NewSealer returns the gpg-backed Sealer configured for the keg.
@@ -297,7 +297,7 @@ func CreateSealedNode(s seal.Sealer, kegpath string, entry *DexEntry, hint strin
 	}
 	out, err := s.Seal(after, hint, tags)
 	if err != nil {
-		return false, err
+		return false, errors.Join(err, os.RemoveAll(filepath.Join(kegpath, entry.ID())))
 	}
 	return true, writeAtomic(readmePath(kegpath, entry.ID()), []byte(out))
 }

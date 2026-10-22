@@ -172,6 +172,8 @@ func PlainResult(r ExecResult) ([]byte, error) {
 	}
 	st := statusKeywords(r.Stderr)
 	switch {
+	case st["DECRYPTION_FAILED"] && st["NO_SECKEY"] && !st["BADMDC"]:
+		return nil, ErrNoSecretKey
 	case st["DECRYPTION_FAILED"] || st["BADMDC"]:
 		return nil, fmt.Errorf("seal: decryption failed: %s", stderrSummary(r.Stderr))
 	case st["DECRYPTION_OKAY"]:

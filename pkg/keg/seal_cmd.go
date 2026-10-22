@@ -177,6 +177,7 @@ var sealWhoCmd = &Z.Cmd{
 				return err
 			}
 			fmt.Print(describePolicy(st))
+			fmt.Print(DescribeKeyrings(st, isDir))
 			return nil
 		}
 		keg, id, _, err := get(x.Caller, args[0])
@@ -256,6 +257,11 @@ func createEncrypted(keg *Local, o EncryptOptions) error {
 	s, plan, err := planSealer(keg.Path, o)
 	if err != nil {
 		return err
+	}
+	if c, ok := s.Cipher.(interface{ CanEncrypt() error }); ok {
+		if err := c.CanEncrypt(); err != nil {
+			return err
+		}
 	}
 	entry, err := MakeNode(keg.Path)
 	if err != nil {

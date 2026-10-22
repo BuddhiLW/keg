@@ -29,6 +29,9 @@ type Settings struct {
 	// KeyFiles are public key files to look recipients up in before the
 	// keyring.
 	KeyFiles []string
+	// Keyrings are the gpg homedirs to use, in order: the first encrypts,
+	// each is tried to decrypt. None means GPG.Homedir alone.
+	Keyrings []string
 }
 
 // Environment variables that override the keg file.
@@ -39,6 +42,7 @@ const (
 	EnvGPGBin          = `KEG_SEAL_GPG_BIN`
 	EnvGPGHomedir      = `KEG_SEAL_GPG_HOMEDIR`
 	EnvKeyFiles        = `KEG_SEAL_KEY_FILES`
+	EnvKeyrings        = `KEG_SEAL_KEYRINGS`
 )
 
 type sealBlock struct {
@@ -92,7 +96,9 @@ func ParseSettings(kegfile string, getenv func(string) string) (Settings, error)
 		blk.KeyFiles = SplitCSV(v)
 	}
 
-	return blk.settings()
+	st, err := blk.settings()
+	st.Keyrings = SplitCSV(getenv(EnvKeyrings))
+	return st, err
 }
 
 func (b sealBlock) settings() (Settings, error) {

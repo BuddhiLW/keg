@@ -1,0 +1,28 @@
+keg create encrypt 
+  hint: ""
+  to: []
+  homedir: "~/mnt/1/gnupg-vault" show-recipients: false
+  keyrings: [~/mnt/1/gnupg-vault ~/.gnupg]
+  key files: [DDDD=/keg/d.pub]
+  prefill: ""
+keg create encrypt key /keys/c.pub
+  hint: ""
+  to: [CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC]
+  homedir: "~/mnt/1/gnupg-vault" show-recipients: false
+  keyrings: [~/mnt/1/gnupg-vault ~/.gnupg]
+  key files: [CCCC=/keys/c.pub DDDD=/keg/d.pub]
+  prefill: "---\nseal: [CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC]\n---\n\n"
+keg create encrypt homedir /once/only hint
+  hint: "hint"
+  to: []
+  homedir: "/once/only" show-recipients: false
+  keyrings: [/once/only]
+  key files: [DDDD=/keg/d.pub]
+  prefill: ""
+keyrings (the first encrypts, each is tried to decrypt):
+  ~/mnt/1/gnupg-vault (not found)
+  ~/.gnupg
+keyrings (the first encrypts, each is tried to decrypt):
+  ~/mnt/1/gnupg-vault (not found)
+keyrings (the first encrypts, each is tried to decrypt):
+  gpg default keyring
