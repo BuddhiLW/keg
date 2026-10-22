@@ -199,7 +199,7 @@ func current(x *Z.Cmd) (*Local, error) {
 var Cmd = &Z.Cmd{
 	Name:        `keg`,
 	Aliases:     []string{`kn`},
-	Version:     `v0.10.0`,
+	Version:     `v0.11.0`,
 	UseVars:     true,
 	Copyright:   `Copyright 2022 Robert S Muhlestein; 2024 Pedro G Branquinho`,
 	License:     `Apache-2.0`,
@@ -602,11 +602,11 @@ var editCmd = &Z.Cmd{
 var createCmd = &Z.Cmd{
 	Name:        `create`,
 	Aliases:     []string{`c`},
-	Params:      []string{`sample`, `sealed`},
-	Usage:       `[help|sample|sealed [HINT...]]`,
+	Params:      []string{`sample`},
+	Usage:       `[help|sample|encrypt]`,
 	Summary:     help.S(_create),
 	Description: help.D(_create),
-	Commands:    []*Z.Cmd{help.Cmd},
+	Commands:    []*Z.Cmd{help.Cmd, createEncryptCmd},
 
 	Call: func(x *Z.Cmd, args ...string) error {
 
@@ -618,10 +618,6 @@ var createCmd = &Z.Cmd{
 		entry, err := MakeNode(keg.Path)
 		if err != nil {
 			return err
-		}
-
-		if len(args) > 0 && args[0] == `sealed` {
-			return createSealed(keg, entry, strings.Join(args[1:], ` `))
 		}
 
 		if len(args) > 0 && args[0] == `sample` {

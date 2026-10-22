@@ -42,22 +42,19 @@ func readmePath(kegpath, id string) string {
 }
 
 // SealSettings reads the seal section of the keg info file, then the
-// KEG_SEAL_* environment.
+// KEG_SEAL_* environment (see sealEnv).
 func SealSettings(kegpath string) (seal.Settings, error) {
 	buf, err := os.ReadFile(filepath.Join(kegpath, `keg`))
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return seal.Settings{}, err
 	}
-	return seal.ParseSettings(string(buf), os.Getenv)
+	return seal.ParseSettings(string(buf), sealEnv)
 }
 
 // NewSealer returns the gpg-backed Sealer configured for the keg.
 func NewSealer(kegpath string) (seal.Sealer, error) {
-	s, err := SealSettings(kegpath)
-	if err != nil {
-		return seal.Sealer{}, err
-	}
-	return seal.Sealer{Cipher: seal.NewGPG(s.GPG), Policy: s.Policy}, nil
+	s, _, err := planSealer(kegpath, EncryptOptions{})
+	return s, err
 }
 
 func readTagsOrEmpty(kegpath string) (TagsMap, error) {
@@ -283,14 +280,15 @@ func EditSealedNode(s seal.Sealer, kegpath, id string, edit Editor) (EditResult,
 }
 
 // CreateSealedNode fills the new node entry through a private
-// plaintext copy and stores only the sealed result. An empty edit
-// removes the node directory and reports false.
-func CreateSealedNode(s seal.Sealer, kegpath string, entry *DexEntry, hint string, edit Editor) (bool, error) {
-	after, err := editPrivately(entry.ID(), nil, edit)
+// plaintext copy, which starts as prefill, and stores only the sealed
+// result. An edit that fails, or is left empty or as prefill, removes
+// the node directory and reports false.
+func CreateSealedNode(s seal.Sealer, kegpath string, entry *DexEntry, hint string, prefill []byte, edit Editor) (bool, error) {
+	after, err := editPrivately(entry.ID(), prefill, edit)
 	if err != nil {
-		return false, err
+		return false, errors.Join(err, os.RemoveAll(filepath.Join(kegpath, entry.ID())))
 	}
-	if len(bytes.TrimSpace(after)) == 0 {
+	if trimmed := bytes.TrimSpace(after); len(trimmed) == 0 || bytes.Equal(trimmed, bytes.TrimSpace(prefill)) {
 		return false, os.RemoveAll(filepath.Join(kegpath, entry.ID()))
 	}
 	tags, err := NodeTags(kegpath, entry.ID())
@@ -299,7 +297,7 @@ func CreateSealedNode(s seal.Sealer, kegpath string, entry *DexEntry, hint strin
 	}
 	out, err := s.Seal(after, hint, tags)
 	if err != nil {
-		return false, err
+		return false, errors.Join(err, os.RemoveAll(filepath.Join(kegpath, entry.ID())))
 	}
 	return true, writeAtomic(readmePath(kegpath, entry.ID()), []byte(out))
 }

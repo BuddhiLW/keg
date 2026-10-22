@@ -78,9 +78,59 @@ func EncryptArgv(o GPGOptions, to Recipients) []string {
 		return append(argv, "--default-recipient-self")
 	}
 	for _, fp := range to {
+		if f, ok := o.KeyFiles[fp]; ok {
+			argv = append(argv, "--recipient-file", f)
+			continue
+		}
 		argv = append(argv, "--recipient", string(fp))
 	}
 	return argv
+}
+
+var ErrSecretKeyFile = errors.New("seal: key file holds a secret key; pass its public half (gpg --export), or use the gpg homedir that holds it")
+
+// ShowKeyArgv prints the keys of a key file as colon records without
+// importing them.
+func ShowKeyArgv(o GPGOptions, path string) []string {
+	return append(o.base(), "--batch", "--with-colons", "--show-keys", path)
+}
+
+// KeyFileResult returns the fingerprint of the one public key a
+// --show-keys run printed. A secret key, or several keys, is an error.
+func KeyFileResult(r ExecResult) (Fingerprint, error) {
+	if r.Err != nil {
+		return "", fmt.Errorf("seal: gpg did not run: %w", r.Err)
+	}
+	if r.Exit != 0 {
+		return "", fmt.Errorf("seal: gpg could not read key file (exit %d): %s", r.Exit, stderrSummary(r.Stderr))
+	}
+	var fps []string
+	primary := false
+	for _, line := range strings.Split(string(r.Stdout), "\n") {
+		f := strings.Split(line, ":")
+		switch f[0] {
+		case "sec":
+			return "", ErrSecretKeyFile
+		case "pub":
+			primary = true
+		case "fpr":
+			if primary && len(f) > 9 {
+				fps = append(fps, f[9])
+			}
+			primary = false
+		case "sub", "ssb":
+			primary = false
+		}
+	}
+	if len(fps) != 1 {
+		return "", fmt.Errorf("seal: key file must hold exactly one public key, found %d", len(fps))
+	}
+	return ParseFingerprint(fps[0])
+}
+
+// KeyFile returns the fingerprint of the public key in the file at path.
+func (g GPG) KeyFile(path string) (Fingerprint, error) {
+	return KeyFileResult(g.Runner.Run(ShowKeyArgv(g.Opts, path), nil))
 }
 
 // DecryptArgv reads armor on stdin and prints plaintext on stdout, with
@@ -122,6 +172,8 @@ func PlainResult(r ExecResult) ([]byte, error) {
 	}
 	st := statusKeywords(r.Stderr)
 	switch {
+	case st["DECRYPTION_FAILED"] && st["NO_SECKEY"] && !st["BADMDC"]:
+		return nil, ErrNoSecretKey
 	case st["DECRYPTION_FAILED"] || st["BADMDC"]:
 		return nil, fmt.Errorf("seal: decryption failed: %s", stderrSummary(r.Stderr))
 	case st["DECRYPTION_OKAY"]:

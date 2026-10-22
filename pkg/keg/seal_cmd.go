@@ -32,6 +32,31 @@ var _seal_who string
 //go:embed text/en/unseal.md
 var _unseal string
 
+//go:embed text/en/create-encrypt.md
+var _create_encrypt string
+
+var createEncryptCmd = &Z.Cmd{
+	Name:        `encrypt`,
+	Aliases:     []string{`sealed`},
+	Params:      []string{`to`, `key`, `homedir`, `show-recipients`},
+	Usage:       `[help|to (FPR|FILE)|key FILE|homedir DIR|show-recipients]... [HINT...]`,
+	Summary:     help.S(_create_encrypt),
+	Description: help.D(_create_encrypt),
+	Commands:    []*Z.Cmd{help.Cmd},
+
+	Call: func(x *Z.Cmd, args ...string) error {
+		keg, err := current(x.Caller.Caller)
+		if err != nil {
+			return err
+		}
+		o, err := encryptOptions(args)
+		if err != nil {
+			return err
+		}
+		return createEncrypted(keg, o)
+	},
+}
+
 var sealCmd = &Z.Cmd{
 	Name:        `seal`,
 	Aliases:     []string{`lock`},
@@ -152,6 +177,7 @@ var sealWhoCmd = &Z.Cmd{
 				return err
 			}
 			fmt.Print(describePolicy(st))
+			fmt.Print(DescribeKeyrings(st, isDir))
 			return nil
 		}
 		keg, id, _, err := get(x.Caller, args[0])
@@ -205,12 +231,43 @@ func editSealed(keg *Local, id string, entry *DexEntry) error {
 	return commitNode(keg, entry)
 }
 
-func createSealed(keg *Local, entry *DexEntry, hint string) error {
-	s, err := NewSealer(keg.Path)
+// encryptOptions reads the parameters of `keg create encrypt`, or asks
+// for them when none were given and a human is at the terminal.
+func encryptOptions(args []string) (EncryptOptions, error) {
+	if len(args) == 0 && humanAtTerminal() {
+		return AskEncryptOptions(termPrompter{})
+	}
+	return ParseEncryptArgs(args)
+}
+
+// termPrompter asks on the terminal, one line per answer.
+type termPrompter struct{}
+
+func (termPrompter) Ask(question string) (string, error) {
+	return term.Prompt("%v: ", question), nil
+}
+
+func humanAtTerminal() bool {
+	fi, err := os.Stdin.Stat()
+	return err == nil && fi.Mode()&os.ModeCharDevice != 0 && term.IsInteractive()
+}
+
+// createEncrypted makes a new node sealed from the start under o.
+func createEncrypted(keg *Local, o EncryptOptions) error {
+	s, plan, err := planSealer(keg.Path, o)
 	if err != nil {
 		return err
 	}
-	created, err := CreateSealedNode(s, keg.Path, entry, hint, file.Edit)
+	if c, ok := s.Cipher.(interface{ CanEncrypt() error }); ok {
+		if err := c.CanEncrypt(); err != nil {
+			return err
+		}
+	}
+	entry, err := MakeNode(keg.Path)
+	if err != nil {
+		return err
+	}
+	created, err := CreateSealedNode(s, keg.Path, entry, o.Hint, plan.Prefill(), file.Edit)
 	if err != nil || !created {
 		return err
 	}

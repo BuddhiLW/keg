@@ -1,0 +1,14 @@
+self:
+  gpg --batch --yes --quiet --armor --throw-keyids --trust-model always --encrypt --default-recipient-self
+two keys:
+  gpg --batch --yes --quiet --armor --throw-keyids --trust-model always --encrypt --recipient AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA --recipient BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+key file:
+  gpg --batch --yes --quiet --armor --throw-keyids --trust-model always --encrypt --recipient AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA --recipient-file /k/b.pub
+unused key file:
+  gpg --batch --yes --quiet --armor --throw-keyids --trust-model always --encrypt --recipient AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+shown:
+  gpg --batch --yes --quiet --armor --trust-model always --encrypt --recipient AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+homedir:
+  gpg2 --homedir /mnt/1/gnupg-vault --batch --yes --quiet --armor --throw-keyids --trust-model always --encrypt --recipient AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+show-keys:
+  gpg --homedir /h --batch --with-colons --show-keys /k/b.pub
