@@ -1,0 +1,64 @@
+keg create encrypt 
+  hint: ""
+  to: []
+  homedir: "" show-recipients: false
+  key files: [DDDD=/keg/d.pub]
+  prefill: ""
+keg create encrypt a note to self
+  hint: "a note to self"
+  to: []
+  homedir: "" show-recipients: false
+  key files: [DDDD=/keg/d.pub]
+  prefill: ""
+keg create encrypt to AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  hint: ""
+  to: [AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA]
+  homedir: "" show-recipients: false
+  key files: [DDDD=/keg/d.pub]
+  prefill: "---\nseal: [AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA]\n---\n\n"
+keg create encrypt to aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa to AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  hint: ""
+  to: [AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA]
+  homedir: "" show-recipients: false
+  key files: [DDDD=/keg/d.pub]
+  prefill: "---\nseal: [AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA]\n---\n\n"
+keg create encrypt to /keys/b.fpr salary talk
+  hint: "salary talk"
+  to: [BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB]
+  homedir: "" show-recipients: false
+  key files: [DDDD=/keg/d.pub]
+  prefill: "---\nseal: [BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB]\n---\n\n"
+keg create encrypt key /keys/c.pub
+  hint: ""
+  to: [CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC]
+  homedir: "" show-recipients: false
+  key files: [CCCC=/keys/c.pub DDDD=/keg/d.pub]
+  prefill: "---\nseal: [CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC]\n---\n\n"
+keg create encrypt key /keys/c.pub to AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA homedir ~/mnt/1/gnupg-vault show-recipients vault
+  hint: "vault"
+  to: [AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC]
+  homedir: "~/mnt/1/gnupg-vault" show-recipients: true
+  key files: [CCCC=/keys/c.pub DDDD=/keg/d.pub]
+  prefill: "---\nseal: [AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA, CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC]\n---\n\n"
+keg create encrypt homedir /abs/vault
+  hint: ""
+  to: []
+  homedir: "/abs/vault" show-recipients: false
+  key files: [DDDD=/keg/d.pub]
+  prefill: ""
+keg create encrypt show-recipients
+  hint: ""
+  to: []
+  homedir: "" show-recipients: true
+  key files: [DDDD=/keg/d.pub]
+  prefill: ""
+keg create encrypt to
+  error: keg: to needs a value
+keg create encrypt homedir  
+  error: keg: homedir needs a value
+keg create encrypt to nobody
+  hint: ""
+  error: seal: "nobody" is not a full OpenPGP fingerprint
+keg create encrypt key /keys/secret.asc
+  hint: ""
+  error: key file /keys/secret.asc: seal: key file holds a secret key; pass its public half (gpg --export), or use the gpg homedir that holds it

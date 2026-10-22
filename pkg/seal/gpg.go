@@ -87,7 +87,7 @@ func EncryptArgv(o GPGOptions, to Recipients) []string {
 	return argv
 }
 
-var ErrSecretKeyFile = errors.New("seal: key file holds a secret key; pass its public half (gpg --export), or point --homedir at the keyring that holds it")
+var ErrSecretKeyFile = errors.New("seal: key file holds a secret key; pass its public half (gpg --export), or use the gpg homedir that holds it")
 
 // ShowKeyArgv prints the keys of a key file as colon records without
 // importing them.

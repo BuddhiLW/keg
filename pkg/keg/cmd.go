@@ -602,21 +602,17 @@ var editCmd = &Z.Cmd{
 var createCmd = &Z.Cmd{
 	Name:        `create`,
 	Aliases:     []string{`c`},
-	Params:      []string{`sample`, `encrypt`, `sealed`},
-	Usage:       `[help|sample|encrypt [--to FPR|FILE] [--key FILE] [--homedir DIR] [--show-recipients] [HINT...]]`,
+	Params:      []string{`sample`},
+	Usage:       `[help|sample|encrypt]`,
 	Summary:     help.S(_create),
 	Description: help.D(_create),
-	Commands:    []*Z.Cmd{help.Cmd},
+	Commands:    []*Z.Cmd{help.Cmd, createEncryptCmd},
 
 	Call: func(x *Z.Cmd, args ...string) error {
 
 		keg, err := current(x.Caller)
 		if err != nil {
 			return err
-		}
-
-		if len(args) > 0 && (args[0] == `encrypt` || args[0] == `sealed`) {
-			return createEncrypted(keg, args[1:])
 		}
 
 		entry, err := MakeNode(keg.Path)

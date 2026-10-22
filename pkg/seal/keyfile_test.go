@@ -38,6 +38,29 @@ func TestKeyFileResult(t *testing.T) {
 	if _, err := seal.KeyFileResult(seal.ExecResult{Exit: 2, Stderr: []byte("gpg: no valid OpenPGP data found.\n")}); err == nil {
 		t.Error("a failed run was accepted")
 	}
+	truncated := "pub:-:\nfpr::::::::\n"
+	if _, err := seal.KeyFileResult(seal.ExecResult{Stdout: []byte(truncated)}); err == nil {
+		t.Error("a fingerprint record without its fingerprint field was accepted")
+	}
+}
+
+func TestParseSettingsKeyFilesAndGPGFromEnv(t *testing.T) {
+	kegfile := "seal:\n  key-files: [ ~/a.pub , '' ]\n  gpg:\n    bin: gpg\n    homedir: /from/file\n"
+	st, err := seal.ParseSettings(kegfile, func(string) string { return "" })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(st.KeyFiles, []string{"~/a.pub"}) || st.GPG.Homedir != "/from/file" || st.GPG.Bin != "gpg" {
+		t.Fatalf("keg file: %+v", st)
+	}
+	env := map[string]string{seal.EnvKeyFiles: "/b.pub, /c.pub", seal.EnvGPGBin: "gpg2", seal.EnvGPGHomedir: "/vault"}
+	st, err = seal.ParseSettings(kegfile, func(k string) string { return env[k] })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(st.KeyFiles, []string{"/b.pub", "/c.pub"}) || st.GPG.Homedir != "/vault" || st.GPG.Bin != "gpg2" {
+		t.Fatalf("environment: %+v", st)
+	}
 }
 
 // TestRealGPGKeyFile encrypts to a public key file that was never

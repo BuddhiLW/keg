@@ -26,7 +26,7 @@ A node can be sealed to several keys at once (multi-key). Recipients come from t
         bin: gpg
         homedir: ""          # the keyring to use, e.g. one on a removable drive
 
-Environment overrides: `KEG_SEAL_RECIPIENTS` (comma list), `KEG_SEAL_TOPIC_RECIPIENTS` (`tag=FPR,...`), `KEG_SEALED_TOPICS`, `KEG_SEAL_KEY_FILES` (comma list), `KEG_SEAL_GPG_BIN`, `KEG_SEAL_GPG_HOMEDIR`. With no recipients at all the node is sealed to your own default key. A key file does not add a recipient. It only tells gpg where to find the key of a fingerprint named elsewhere. {{cmd "create encrypt"}} also takes per-node `--to`, `--key` and `--homedir` options.
+Environment overrides: `KEG_SEAL_RECIPIENTS` (comma list), `KEG_SEAL_TOPIC_RECIPIENTS` (`tag=FPR,...`), `KEG_SEALED_TOPICS`, `KEG_SEAL_KEY_FILES` (comma list), `KEG_SEAL_GPG_BIN`, `KEG_SEAL_GPG_HOMEDIR`. With no recipients at all the node is sealed to your own default key. A key file does not add a recipient. It only tells gpg where to find the key of a fingerprint named elsewhere. {{cmd "create encrypt"}} also takes per-node `to`, `key` and `homedir` parameters.
 
 Once sealed, {{cmd "edit"}} decrypts into a private, short-lived copy outside the keg and seals the result back; {{cmd "view"}} decrypts in memory. Plaintext is never written inside the keg. Publishing refuses to push when a node carrying a tag listed in `topics` or `topic-recipients` is stored in the clear (see {{cmd "check"}}).
 

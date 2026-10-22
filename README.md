@@ -178,12 +178,13 @@ seal:
 Pick the keys for one node on the command line instead of the policy:
 
 ```sh
-keg create encrypt --key ~/keys/vault.pub.gpg public hint   # public key file, not imported
-keg create encrypt --to 0123...ABCD --to 4567...EF01         # fingerprints, or files holding one
-keg create encrypt --homedir ~/mnt/1/gnupg-vault             # that keyring's own key
+keg create encrypt                                        # asks for hint and recipients
+keg create encrypt key ~/keys/vault.pub.gpg public hint   # public key file, not imported
+keg create encrypt to 0123...ABCD to 4567...EF01          # fingerprints, or files holding one
+keg create encrypt homedir ~/mnt/1/gnupg-vault            # that keyring's own key
 ```
 
-The chosen recipients are written into the note's own `seal:` directive, inside the ciphertext, so later edits keep them. A secret-key file is refused; point `--homedir` at its keyring instead.
+The chosen recipients are written into the note's own `seal:` directive, inside the ciphertext, so later edits keep them. A secret-key file is refused; point `homedir` at its keyring instead.
 
 `keg seal check` (also run before every publish) refuses plaintext nodes that carry a sealed tag; `keg seal rekey (ID|all)` re-encrypts after a key is added or removed; `keg seal who [ID]` shows who can read what; `keg unseal ID` stores a node in the clear again. The on-disk envelope (`#hive/sealed 1`) is the same one hive memory uses, so sealed nodes can be ingested without being opened. Requires `gpg`.
 

@@ -22,52 +22,70 @@ type EncryptOptions struct {
 	Hint           string
 }
 
-// ParseEncryptArgs reads the options of `keg create encrypt`. Words that
-// are not options form the hint; `--` ends the options.
+// ParseEncryptArgs reads the leading parameters of `keg create encrypt`:
+// `to`, `key` and `homedir` take the next word as their value,
+// `show-recipients` takes none. The first other word starts the hint.
 func ParseEncryptArgs(args []string) (EncryptOptions, error) {
 	var o EncryptOptions
-	var hint []string
 	for i := 0; i < len(args); i++ {
-		a := args[i]
-		if a == `--` {
-			hint = append(hint, args[i+1:]...)
-			break
-		}
-		if !strings.HasPrefix(a, `--`) {
-			hint = append(hint, a)
-			continue
-		}
-		name, val, inline := strings.Cut(a[2:], `=`)
-		if name == `show-recipients` {
-			if inline {
-				return o, fmt.Errorf("keg: --show-recipients takes no value")
-			}
+		word := args[i]
+		if word == `show-recipients` {
 			o.ShowRecipients = true
 			continue
 		}
-		if !inline {
-			if i+1 >= len(args) {
-				return o, fmt.Errorf("keg: --%v needs a value", name)
-			}
-			i++
-			val = args[i]
+		if word != `to` && word != `key` && word != `homedir` {
+			o.Hint = strings.Join(args[i:], ` `)
+			break
 		}
-		if strings.TrimSpace(val) == "" {
-			return o, fmt.Errorf("keg: --%v needs a value", name)
+		i++
+		if i >= len(args) || strings.TrimSpace(args[i]) == "" {
+			return o, fmt.Errorf("keg: %v needs a value", word)
 		}
-		switch name {
+		switch word {
 		case `to`:
-			o.To = append(o.To, val)
+			o.To = append(o.To, args[i])
 		case `key`:
-			o.Keys = append(o.Keys, val)
+			o.Keys = append(o.Keys, args[i])
 		case `homedir`:
-			o.Homedir = val
-		default:
-			return o, fmt.Errorf("keg: unknown option --%v (want --to, --key, --homedir or --show-recipients)", name)
+			o.Homedir = args[i]
 		}
 	}
-	o.Hint = strings.Join(hint, ` `)
 	return o, nil
+}
+
+// Prompter asks the human one question and returns the answer.
+type Prompter interface {
+	Ask(question string) (string, error)
+}
+
+// AskEncryptOptions fills a bare `keg create encrypt` through p: the
+// public hint, then the recipients. A blank answer keeps the default.
+func AskEncryptOptions(p Prompter) (EncryptOptions, error) {
+	var answers [3]string
+	for i, q := range []string{
+		`public hint, shown in the index (blank: ` + SealedTitle + `)`,
+		`encrypt to fingerprints or fingerprint files (blank: keg policy)`,
+		`public key files to encrypt to (blank: none)`,
+	} {
+		a, err := p.Ask(q)
+		if err != nil {
+			return EncryptOptions{}, err
+		}
+		answers[i] = a
+	}
+	return EncryptOptions{
+		Hint: strings.TrimSpace(answers[0]),
+		To:   words(answers[1]),
+		Keys: words(answers[2]),
+	}, nil
+}
+
+// words splits s on spaces; a blank s has no words.
+func words(s string) []string {
+	if f := strings.Fields(s); len(f) > 0 {
+		return f
+	}
+	return nil
 }
 
 // KeyFileReader returns the fingerprint of the public key in a file.
@@ -125,9 +143,7 @@ func PlanEncrypt(st seal.Settings, o EncryptOptions, readFile func(string) ([]by
 		}
 		to = append(to, fp)
 	}
-	if len(files) > 0 {
-		g.KeyFiles = files
-	}
+	g.KeyFiles = files
 	return EncryptPlan{GPG: g, To: to.Normal()}, nil
 }
 

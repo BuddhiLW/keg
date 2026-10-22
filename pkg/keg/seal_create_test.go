@@ -19,20 +19,47 @@ const (
 )
 
 func TestParseEncryptArgs(t *testing.T) {
-	got, err := keg.ParseEncryptArgs([]string{"--to", fpA, "a", "--key=~/k.pub",
-		"--homedir", "/vault", "--show-recipients", "public", "--", "--to", "x"})
+	got, err := keg.ParseEncryptArgs([]string{"to", fpA, "key", "~/k.pub", "to", "~/b.fpr",
+		"homedir", "/vault", "show-recipients", "a", "note", "to", "self"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := keg.EncryptOptions{To: []string{fpA}, Keys: []string{"~/k.pub"},
-		Homedir: "/vault", ShowRecipients: true, Hint: "a public --to x"}
+	want := keg.EncryptOptions{To: []string{fpA, "~/b.fpr"}, Keys: []string{"~/k.pub"},
+		Homedir: "/vault", ShowRecipients: true, Hint: "a note to self"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got  %+v\nwant %+v", got, want)
 	}
-	for _, bad := range [][]string{{"--to"}, {"--key="}, {"--recipient", fpA}, {"--show-recipients=yes"}} {
+	if o, _ := keg.ParseEncryptArgs([]string{"just", "a", "hint"}); o.Hint != "just a hint" || o.To != nil {
+		t.Errorf("hint only: %+v", o)
+	}
+	for _, bad := range [][]string{{"to"}, {"key", " "}, {"homedir"}} {
 		if _, err := keg.ParseEncryptArgs(bad); err == nil {
 			t.Errorf("%v accepted", bad)
 		}
+	}
+}
+
+type askStub []string
+
+func (a *askStub) Ask(string) (string, error) {
+	next := (*a)[0]
+	*a = (*a)[1:]
+	return next, nil
+}
+
+func TestAskEncryptOptions(t *testing.T) {
+	p := &askStub{"  a hint  ", fpA + " ~/b.fpr", ""}
+	got, err := keg.AskEncryptOptions(p)
+	want := keg.EncryptOptions{Hint: "a hint", To: []string{fpA, "~/b.fpr"}}
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %+v %v\nwant %+v", got, err, want)
+	}
+	if len(*p) != 0 {
+		t.Fatalf("%d answers not asked for", len(*p))
+	}
+	blank, _ := keg.AskEncryptOptions(&askStub{"", "", ""})
+	if !reflect.DeepEqual(blank, keg.EncryptOptions{}) {
+		t.Errorf("blank answers: %+v, want the defaults", blank)
 	}
 }
 
